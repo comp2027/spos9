@@ -1,0 +1,231 @@
+input.txt
+
+START 200
+MOVER AREG ,ONE
+ADD BREG ,TWO
+ADD BREG , ='5'
+MOVEM CREG ,RESULT
+ONE DS 4
+TWO DC 2
+RESULT DS 1
+END
+
+
+
+
+
+package pass1;
+
+import java.io.*;
+import java.util.*;
+
+public class practicalpreffered {
+    // MOT / tables
+    static Map<String,String> IS = new HashMap<String,String>();
+    static Map<String,String> AD = new HashMap<String,String>();
+    static Map<String,String> DL = new HashMap<String,String>();
+    static Map<String,String> RG = new HashMap<String,String>();
+
+    // Symbol and Literal tables
+    static List<String> Symtab = new ArrayList<String>();
+    static Map<String,Integer> SymtabADD = new HashMap<String,Integer>();
+    static List<String> Littab = new ArrayList<String>();
+    static Map<String,Integer> LittabADD = new HashMap<String,Integer>();
+
+    // Intermediate listing
+    static List<String> intermediate = new ArrayList<String>();
+
+    public static void main(String[] args) {
+        initTables();
+
+        // read input file named "input.txt" from current directory
+        List<String> lines = readFile("C:\\\\Users\\\\lenovo\\\\eclipse-workspace\\\\practical1\\\\src\\\\pass1\\\\inputwithic.txt");
+
+        // perform pass1
+        pass1(lines.toArray(new String[0]));
+
+        // print Symbol Table
+        System.out.println("Symbol Table");
+        for (int i = 0; i < Symtab.size(); i++) {
+            String s = Symtab.get(i);
+            Integer a = SymtabADD.get(s);
+            System.out.println(i + " " + s + " " + (a==null ? "-" : a.toString()));
+        }
+
+        // print Literal Table
+        System.out.println("Literal Table");
+        for (int i = 0; i < Littab.size(); i++) {
+            String l = Littab.get(i);
+            Integer a = LittabADD.get(l);
+            System.out.println(i + " " + l + " " + (a==null ? "-" : a.toString()));
+        }
+
+        // print Intermediate
+        System.out.println("Intermediate Listing");
+        for (String rec : intermediate) System.out.println(rec);
+    }
+
+    // initialize opcodes, directives and registers
+    static void initTables() {
+        IS.put("ADD","01"); IS.put("SUB","02"); IS.put("MUL","03"); IS.put("DIV","04");
+        IS.put("MOVER","05"); IS.put("MOVEM","06"); IS.put("READ","07");
+        AD.put("START","01"); AD.put("END","02");
+        DL.put("DC","01"); DL.put("DS","02");
+        RG.put("AREG","01"); RG.put("BREG","02"); RG.put("CREG","03");
+        RG.put("A","01"); RG.put("B","02"); RG.put("C","03"); // single-letter registers
+    }
+
+    // read lines from file, strip comments after ';', normalize commas
+    static List<String> readFile(String filename) {
+        List<String> out = new ArrayList<String>();
+        BufferedReader br = null;
+        try {
+            br = new BufferedReader(new FileReader(filename));
+            String line;
+            while ((line = br.readLine()) != null) {
+                int p = line.indexOf(';');
+                if (p >= 0) line = line.substring(0, p);
+                line = line.trim();
+                if (line.length() == 0) continue;
+                line = line.replaceAll("\\s*,\\s*", " , "); // separate commas
+                out.add(line);
+            }
+        } catch (FileNotFoundException e) {
+            System.err.println("Input file not found: " + filename);
+            System.exit(1);
+        } catch (IOException e) {
+            System.err.println("Error reading file: " + e.getMessage());
+            System.exit(1);
+        } finally {
+            try { if (br != null) br.close(); } catch(Exception e) {}
+        }
+        return out;
+    }
+
+    // flush unassigned literals starting at LC; return new LC
+    static int flushLiteralPool(int LC) {
+        for (int i = 0; i < Littab.size(); i++) {
+            String lit = Littab.get(i);
+            if (!LittabADD.containsKey(lit)) {
+                LittabADD.put(lit, LC);
+                String value = lit;
+                if (lit.length() >= 3 && (lit.startsWith("='") || lit.startsWith("=\"")))
+                    value = lit.substring(2, lit.length()-1);
+                else if (lit.startsWith("="))
+                    value = lit.substring(1);
+                intermediate.add("DL " + DL.get("DC") + " C " + value);
+                LC++;
+            }
+        }
+        return LC;
+    }
+
+    // helper to find operand token (skip comma and optional register)
+    static String findOperand(String[] parts, int start) {
+        for (int i = start; i < parts.length; i++) {
+            if (parts[i].equals(",")) continue;
+            if (i == start && RG.containsKey(parts[i].toUpperCase())) continue;
+            return parts[i];
+        }
+        return null;
+    }
+
+    // simple integer parse with default
+    static int safeParse(String s, int def) {
+        try { return Integer.parseInt(s); } catch(Exception e) { return def; }
+    }
+
+    // pass1 main logic
+    static void pass1(String[] program) {
+        int LC = 0;
+        for (String line : program) {
+            String[] parts = line.trim().split("[ \\t,]+");
+            if (parts.length == 0) continue;
+            String tok = parts[0].toUpperCase();
+
+            if (tok.equals("START")) {
+                LC = (parts.length > 1) ? safeParse(parts[1], 0) : 0;
+                intermediate.add("AD " + AD.get("START") + " C " + LC);
+                continue;
+            }
+
+            if (tok.equals("LTORG")) {
+                LC = flushLiteralPool(LC);
+                continue;
+            }
+
+            if (tok.equals("END")) {
+                intermediate.add("AD " + AD.get("END"));
+                LC = flushLiteralPool(LC);
+                break;
+            }
+
+            // standalone literal line e.g. ='5'
+            if (parts[0].startsWith("=")) {
+                if (!Littab.contains(parts[0])) Littab.add(parts[0]);
+                continue;
+            }
+
+            // instruction (no label)
+            if (IS.containsKey(tok)) {
+                String ic = "IS " + IS.get(tok);
+                if (parts.length > 1 && RG.containsKey(parts[1].toUpperCase()))
+                    ic += " RG " + RG.get(parts[1].toUpperCase());
+                String op = findOperand(parts, 1);
+                if (op != null) {
+                    if (op.startsWith("=")) {
+                        if (!Littab.contains(op)) Littab.add(op);
+                        ic += " L " + Littab.indexOf(op);
+                    } else {
+                        if (!Symtab.contains(op)) Symtab.add(op);
+                        ic += " S " + Symtab.indexOf(op);
+                    }
+                }
+                intermediate.add(ic);
+                LC++;
+                continue;
+            }
+
+            // label definition
+            String label = parts[0];
+            if (!Symtab.contains(label)) Symtab.add(label);
+            SymtabADD.put(label, LC);
+
+            if (parts.length > 1) {
+                String op = parts[1].toUpperCase();
+                if (DL.containsKey(op)) { // DS or DC
+                    if (op.equals("DS")) {
+                        int size = (parts.length > 2) ? safeParse(parts[2], 1) : 1;
+                        intermediate.add("DL " + DL.get("DS") + " C " + size);
+                        LC += size;
+                    } else { // DC
+                        String val = (parts.length > 2) ? parts[2] : "0";
+                        intermediate.add("DL " + DL.get("DC") + " C " + val);
+                        LC++;
+                    }
+                    continue;
+                }
+
+                // label followed by instruction
+                if (IS.containsKey(op)) {
+                    String ic = "IS " + IS.get(op);
+                    if (parts.length > 2 && RG.containsKey(parts[2].toUpperCase()))
+                        ic += " RG " + RG.get(parts[2].toUpperCase());
+                    String operand = findOperand(parts, 2);
+                    if (operand != null) {
+                        if (operand.startsWith("=")) {
+                            if (!Littab.contains(operand)) Littab.add(operand);
+                            ic += " L " + Littab.indexOf(operand);
+                        } else {
+                            if (!Symtab.contains(operand)) Symtab.add(operand);
+                            ic += " S " + Symtab.indexOf(operand);
+                        }
+                    }
+                    intermediate.add(ic);
+                    LC++;
+                }
+            }
+        }
+    }
+}
+
