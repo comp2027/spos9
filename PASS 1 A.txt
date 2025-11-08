@@ -20,31 +20,30 @@ import java.io.*;
 import java.util.*;
 
 public class practicalpreffered {
-    // MOT / tables
+    
     static Map<String,String> IS = new HashMap<String,String>();
     static Map<String,String> AD = new HashMap<String,String>();
     static Map<String,String> DL = new HashMap<String,String>();
     static Map<String,String> RG = new HashMap<String,String>();
 
-    // Symbol and Literal tables
+   
     static List<String> Symtab = new ArrayList<String>();
     static Map<String,Integer> SymtabADD = new HashMap<String,Integer>();
     static List<String> Littab = new ArrayList<String>();
     static Map<String,Integer> LittabADD = new HashMap<String,Integer>();
 
-    // Intermediate listing
+   
     static List<String> intermediate = new ArrayList<String>();
 
     public static void main(String[] args) {
         initTables();
 
-        // read input file named "input.txt" from current directory
+      
         List<String> lines = readFile("C:\\\\Users\\\\lenovo\\\\eclipse-workspace\\\\practical1\\\\src\\\\pass1\\\\inputwithic.txt");
 
-        // perform pass1
+       
         pass1(lines.toArray(new String[0]));
 
-        // print Symbol Table
         System.out.println("Symbol Table");
         for (int i = 0; i < Symtab.size(); i++) {
             String s = Symtab.get(i);
@@ -52,7 +51,7 @@ public class practicalpreffered {
             System.out.println(i + " " + s + " " + (a==null ? "-" : a.toString()));
         }
 
-        // print Literal Table
+      
         System.out.println("Literal Table");
         for (int i = 0; i < Littab.size(); i++) {
             String l = Littab.get(i);
@@ -60,12 +59,12 @@ public class practicalpreffered {
             System.out.println(i + " " + l + " " + (a==null ? "-" : a.toString()));
         }
 
-        // print Intermediate
+        
         System.out.println("Intermediate Listing");
         for (String rec : intermediate) System.out.println(rec);
     }
 
-    // initialize opcodes, directives and registers
+  
     static void initTables() {
         IS.put("ADD","01"); IS.put("SUB","02"); IS.put("MUL","03"); IS.put("DIV","04");
         IS.put("MOVER","05"); IS.put("MOVEM","06"); IS.put("READ","07");
@@ -75,7 +74,7 @@ public class practicalpreffered {
         RG.put("A","01"); RG.put("B","02"); RG.put("C","03"); // single-letter registers
     }
 
-    // read lines from file, strip comments after ';', normalize commas
+    
     static List<String> readFile(String filename) {
         List<String> out = new ArrayList<String>();
         BufferedReader br = null;
@@ -87,7 +86,7 @@ public class practicalpreffered {
                 if (p >= 0) line = line.substring(0, p);
                 line = line.trim();
                 if (line.length() == 0) continue;
-                line = line.replaceAll("\\s*,\\s*", " , "); // separate commas
+                line = line.replaceAll("\\s*,\\s*", " , "); 
                 out.add(line);
             }
         } catch (FileNotFoundException e) {
@@ -102,7 +101,7 @@ public class practicalpreffered {
         return out;
     }
 
-    // flush unassigned literals starting at LC; return new LC
+  
     static int flushLiteralPool(int LC) {
         for (int i = 0; i < Littab.size(); i++) {
             String lit = Littab.get(i);
@@ -120,7 +119,7 @@ public class practicalpreffered {
         return LC;
     }
 
-    // helper to find operand token (skip comma and optional register)
+   
     static String findOperand(String[] parts, int start) {
         for (int i = start; i < parts.length; i++) {
             if (parts[i].equals(",")) continue;
@@ -135,7 +134,7 @@ public class practicalpreffered {
         try { return Integer.parseInt(s); } catch(Exception e) { return def; }
     }
 
-    // pass1 main logic
+    
     static void pass1(String[] program) {
         int LC = 0;
         for (String line : program) {
@@ -160,13 +159,13 @@ public class practicalpreffered {
                 break;
             }
 
-            // standalone literal line e.g. ='5'
+           
             if (parts[0].startsWith("=")) {
                 if (!Littab.contains(parts[0])) Littab.add(parts[0]);
                 continue;
             }
 
-            // instruction (no label)
+            
             if (IS.containsKey(tok)) {
                 String ic = "IS " + IS.get(tok);
                 if (parts.length > 1 && RG.containsKey(parts[1].toUpperCase()))
@@ -186,7 +185,7 @@ public class practicalpreffered {
                 continue;
             }
 
-            // label definition
+         
             String label = parts[0];
             if (!Symtab.contains(label)) Symtab.add(label);
             SymtabADD.put(label, LC);
@@ -206,7 +205,7 @@ public class practicalpreffered {
                     continue;
                 }
 
-                // label followed by instruction
+          
                 if (IS.containsKey(op)) {
                     String ic = "IS " + IS.get(op);
                     if (parts.length > 2 && RG.containsKey(parts[2].toUpperCase()))
@@ -228,4 +227,5 @@ public class practicalpreffered {
         }
     }
 }
+
 
