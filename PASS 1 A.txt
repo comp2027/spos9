@@ -39,7 +39,7 @@ public class practicalpreffered {
         initTables();
 
       
-        List<String> lines = readFile("C:\\\\Users\\\\lenovo\\\\eclipse-workspace\\\\practical1\\\\src\\\\pass1\\\\inputwithic.txt");
+        List<String> lines = readFile("inputwithic.txt");
 
        
         pass1(lines.toArray(new String[0]));
@@ -227,5 +227,6 @@ public class practicalpreffered {
         }
     }
 }
+
 
 
